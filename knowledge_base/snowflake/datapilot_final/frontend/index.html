@@ -1,0 +1,1120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>DataPilot</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/marked/9.1.6/marked.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0f1117;--surface:#1a1d27;--surface2:#22263a;--surface3:#2a2e44;
+  --border:#2e3250;--border2:#3a3f60;
+  --text:#e8eaf6;--muted:#8b8fa8;--muted2:#6b6f88;
+  --accent:#6c63ff;--accent2:#7c73ff;--accent-dim:rgba(108,99,255,.12);
+  --success:#22c55e;--warn:#f59e0b;--error:#ef4444;--info:#38bdf8;
+  --radius:10px;--font:'Inter',system-ui,sans-serif;--mono:'JetBrains Mono','Fira Code',monospace;
+}
+body{background:var(--bg);color:var(--text);font-family:var(--font);height:100vh;display:flex;overflow:hidden}
+
+/* ── Sidebar ── */
+#sidebar{width:240px;min-width:240px;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column}
+.logo{padding:18px 16px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px}
+.logo-icon{width:30px;height:30px;background:var(--accent);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0}
+.logo-text{font-weight:700;font-size:15px;letter-spacing:-0.3px}
+.logo-sub{font-size:11px;color:var(--muted);margin-top:1px}
+
+.source-card{margin:10px 10px 0;padding:10px 12px;background:var(--surface2);border-radius:var(--radius);border:1px solid var(--border)}
+.source-label{font-size:10px;color:var(--muted2);text-transform:uppercase;letter-spacing:.6px;margin-bottom:3px}
+.source-name{font-size:12px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.source-pill{display:inline-flex;align-items:center;gap:4px;margin-top:5px;font-size:10px;padding:2px 7px;border-radius:20px;background:rgba(34,197,94,.1);color:var(--success)}
+.source-pill.warn{background:rgba(245,158,11,.1);color:var(--warn)}
+.source-pill.off{background:rgba(239,68,68,.1);color:var(--error)}
+.pill-dot{width:5px;height:5px;border-radius:50%;background:currentColor}
+
+nav{padding:8px;margin-top:4px}
+.nav-item{display:flex;align-items:center;gap:9px;padding:8px 11px;border-radius:8px;cursor:pointer;font-size:13px;color:var(--muted);transition:all .15s;border:none;background:none;width:100%;text-align:left}
+.nav-item:hover{background:var(--surface2);color:var(--text)}
+.nav-item.active{background:var(--accent-dim);color:var(--accent)}
+.nav-icon{font-size:15px;width:18px;text-align:center;flex-shrink:0}
+.nav-badge{margin-left:auto;font-size:10px;padding:1px 6px;border-radius:20px;background:var(--accent-dim);color:var(--accent)}
+
+.sidebar-divider{height:1px;background:var(--border);margin:6px 10px}
+
+.sidebar-footer{margin-top:auto;padding:10px}
+.regen-btn{width:100%;padding:8px;background:var(--accent-dim);border:1px solid rgba(108,99,255,.2);color:var(--accent);border-radius:8px;cursor:pointer;font-size:12px;font-weight:500;transition:all .15s;display:flex;align-items:center;justify-content:center;gap:6px}
+.regen-btn:hover{background:rgba(108,99,255,.2)}
+
+/* ── Main ── */
+#main{flex:1;display:flex;flex-direction:column;overflow:hidden;position:relative}
+
+.view{display:none;flex-direction:column;flex:1;overflow:hidden}
+.view.active{display:flex}
+
+/* ── Setup view ── */
+#view-setup{overflow-y:auto;align-items:center;padding:32px 20px}
+.setup-inner{width:100%;max-width:620px}
+.setup-title{font-size:22px;font-weight:700;margin-bottom:6px}
+.setup-sub{color:var(--muted);font-size:14px;margin-bottom:28px}
+
+.steps{display:flex;align-items:center;margin-bottom:28px}
+.step{display:flex;align-items:center;gap:7px;font-size:12px;color:var(--muted)}
+.step.active{color:var(--text)}
+.step.done{color:var(--success)}
+.step-num{width:22px;height:22px;border-radius:50%;border:1.5px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;flex-shrink:0}
+.step.active .step-num{border-color:var(--accent);color:var(--accent)}
+.step.done .step-num{border-color:var(--success);background:var(--success);color:#fff}
+.step-line{flex:1;height:1px;background:var(--border);margin:0 6px}
+
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px;margin-bottom:16px}
+.card-title{font-size:14px;font-weight:600;margin-bottom:14px}
+.card-sub{font-size:12px;color:var(--muted);margin-bottom:14px;line-height:1.5}
+
+.src-opts{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.src-opt{padding:14px;border:1.5px solid var(--border);border-radius:var(--radius);cursor:pointer;transition:all .15s}
+.src-opt:hover{border-color:var(--accent);background:var(--accent-dim)}
+.src-opt.selected{border-color:var(--accent);background:var(--accent-dim)}
+.src-opt .oi{font-size:22px;margin-bottom:6px}
+.src-opt .ol{font-size:13px;font-weight:500}
+.src-opt .os{font-size:11px;color:var(--muted);margin-top:2px}
+
+.upload-zone{border:1.5px dashed var(--border);border-radius:var(--radius);padding:28px;text-align:center;cursor:pointer;transition:all .15s}
+.upload-zone:hover,.upload-zone.over{border-color:var(--accent);background:var(--accent-dim)}
+.upload-zone input{display:none}
+
+.db-list{display:flex;flex-direction:column;gap:6px}
+.db-row{display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--border);border-radius:8px;cursor:pointer;transition:all .15s}
+.db-row:hover{border-color:var(--accent);background:var(--accent-dim)}
+.db-row.selected{border-color:var(--accent);background:var(--accent-dim)}
+.db-row .di{font-size:18px}
+.db-row .dn{font-size:13px;font-weight:500}
+.db-row .dm{font-size:11px;color:var(--muted)}
+.db-row .dkb{margin-left:auto;font-size:10px;padding:2px 7px;border-radius:20px;background:rgba(34,197,94,.1);color:var(--success)}
+
+.domain-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:7px}
+.dom-chip{padding:9px 8px;border:1px solid var(--border);border-radius:8px;cursor:pointer;text-align:center;font-size:12px;transition:all .15s;line-height:1.3}
+.dom-chip:hover{border-color:var(--accent)}
+.dom-chip.selected{border-color:var(--accent);background:var(--accent-dim);color:var(--accent)}
+
+.actions{display:flex;gap:8px;justify-content:flex-end;margin-top:4px}
+.btn{padding:8px 18px;border-radius:8px;cursor:pointer;font-size:13px;font-weight:500;border:none;transition:all .15s;display:inline-flex;align-items:center;gap:6px}
+.btn-primary{background:var(--accent);color:#fff}
+.btn-primary:hover{background:var(--accent2)}
+.btn-primary:disabled{opacity:.38;cursor:not-allowed}
+.btn-ghost{background:var(--surface2);color:var(--text);border:1px solid var(--border)}
+.btn-ghost:hover{border-color:var(--accent);color:var(--accent)}
+.btn-sm{padding:6px 12px;font-size:12px}
+
+.prog-box{text-align:center;padding:28px}
+.spinner{width:40px;height:40px;border:2.5px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin 1s linear infinite;margin:0 auto 14px}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ── Chat view ── */
+#view-chat .top-bar{padding:12px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;flex-shrink:0}
+.top-bar-title{font-size:14px;font-weight:600}
+.src-tag{font-size:11px;padding:2px 9px;background:var(--accent-dim);color:var(--accent);border-radius:20px}
+.top-bar-right{margin-left:auto;display:flex;align-items:center;gap:6px}
+
+/* ── Hamburger Menu Button ── */
+.menu-btn{width:32px;height:32px;border-radius:8px;border:1px solid var(--border);background:var(--surface2);cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;transition:all .15s;flex-shrink:0}
+.menu-btn:hover{border-color:var(--accent);background:var(--accent-dim)}
+.menu-btn span{display:block;width:14px;height:1.5px;background:var(--muted);border-radius:2px;transition:all .15s}
+.menu-btn:hover span{background:var(--accent)}
+
+/* ── Dropdown Menu ── */
+.dropdown-wrap{position:relative}
+.dropdown{position:absolute;top:calc(100% + 6px);right:0;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);min-width:200px;z-index:200;box-shadow:0 8px 24px rgba(0,0,0,.4);overflow:hidden;display:none}
+.dropdown.open{display:block}
+.dd-header{padding:8px 12px;font-size:10px;color:var(--muted2);text-transform:uppercase;letter-spacing:.6px;border-bottom:1px solid var(--border)}
+.dd-item{display:flex;align-items:center;gap:10px;padding:9px 12px;cursor:pointer;font-size:13px;color:var(--text);transition:all .15s;border:none;background:none;width:100%;text-align:left}
+.dd-item:hover{background:var(--surface2)}
+.dd-item .di{font-size:15px;width:18px;text-align:center}
+.dd-item .dsub{font-size:11px;color:var(--muted);margin-top:1px}
+.dd-divider{height:1px;background:var(--border);margin:2px 0}
+
+#messages{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:14px}
+.msg{max-width:88%}
+.msg.user{align-self:flex-end}
+.msg.assistant{align-self:flex-start;width:100%;max-width:100%}
+.bubble{padding:11px 15px;border-radius:12px;font-size:13px;line-height:1.6}
+.msg.user .bubble{background:var(--accent);color:#fff;border-bottom-right-radius:3px}
+.msg.assistant .bubble{background:var(--surface);border:1px solid var(--border);border-bottom-left-radius:3px}
+
+.ans-text{font-size:13px;line-height:1.6;margin-bottom:10px}
+.ans-text strong{font-weight:600}
+
+.sql-blk{margin:6px 0;background:var(--surface2);border:1px solid var(--border);border-radius:8px;overflow:hidden}
+.sql-hdr{padding:5px 10px;background:rgba(0,0,0,.25);display:flex;align-items:center;justify-content:space-between;font-size:10px;color:var(--muted)}
+.sql-body{padding:10px;font-family:var(--mono);font-size:11px;color:#a9b7c6;overflow-x:auto;white-space:pre}
+
+.tbl-wrap{margin:6px 0;overflow-x:auto;border-radius:8px;border:1px solid var(--border)}
+.dtbl{width:100%;border-collapse:collapse;font-size:12px}
+.dtbl th{background:var(--surface2);padding:7px 10px;text-align:left;color:var(--muted);font-weight:500;font-size:11px;white-space:nowrap;border-bottom:1px solid var(--border)}
+.dtbl td{padding:7px 10px;border-bottom:1px solid var(--border);white-space:nowrap;max-width:180px;overflow:hidden;text-overflow:ellipsis}
+.dtbl tr:last-child td{border-bottom:none}
+.dtbl tr:hover td{background:rgba(255,255,255,.02)}
+
+.chart-wrap{margin:6px 0;max-height:240px}
+.num-card{padding:14px;background:var(--surface2);border-radius:8px;border:1px solid var(--border);text-align:center;margin:6px 0}
+.num-val{font-size:26px;font-weight:700;color:var(--accent)}
+.num-lbl{font-size:11px;color:var(--muted);margin-top:3px}
+
+.meta-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+.mtag{font-size:10px;padding:2px 7px;border-radius:20px;background:var(--surface2);color:var(--muted)}
+.mtag.ok{background:rgba(34,197,94,.1);color:var(--success)}
+
+.fups{display:flex;flex-wrap:wrap;gap:5px;margin-top:8px}
+.fup-btn{font-size:11px;padding:4px 10px;background:var(--surface2);border:1px solid var(--border);border-radius:20px;cursor:pointer;color:var(--muted);transition:all .15s}
+.fup-btn:hover{border-color:var(--accent);color:var(--accent)}
+
+.loading-row{display:flex;align-items:center;gap:8px;padding:10px 14px;background:var(--surface);border:1px solid var(--border);border-radius:10px;width:fit-content}
+.dots span{display:inline-block;width:5px;height:5px;border-radius:50%;background:var(--accent);animation:bop .7s infinite}
+.dots span:nth-child(2){animation-delay:.12s}
+.dots span:nth-child(3){animation-delay:.24s}
+@keyframes bop{0%,80%,100%{transform:translateY(0)}40%{transform:translateY(-5px)}}
+
+.no-kb-bar{margin:8px 14px 0;padding:9px 13px;background:rgba(245,158,11,.07);border:1px solid rgba(245,158,11,.2);border-radius:8px;font-size:12px;color:var(--warn);display:flex;align-items:center;gap:8px}
+
+.welcome-wrap{padding:32px 16px;text-align:center;color:var(--muted)}
+.welcome-wrap h3{font-size:16px;font-weight:600;color:var(--text);margin-bottom:6px}
+.welcome-wrap p{font-size:13px;margin-bottom:20px}
+.ex-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;max-width:460px;margin:0 auto}
+.ex-chip{padding:9px 12px;background:var(--surface);border:1px solid var(--border);border-radius:8px;cursor:pointer;font-size:12px;text-align:left;color:var(--text);transition:all .15s;line-height:1.4}
+.ex-chip:hover{border-color:var(--accent);color:var(--accent)}
+
+.chat-footer{padding:12px 16px;border-top:1px solid var(--border);flex-shrink:0}
+.inp-row{display:flex;gap:8px;align-items:flex-end}
+#chat-input{flex:1;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:10px 14px;color:var(--text);font-size:13px;resize:none;outline:none;line-height:1.5;max-height:100px;transition:border-color .15s;font-family:var(--font)}
+#chat-input:focus{border-color:var(--accent)}
+#send-btn{padding:10px 16px;background:var(--accent);border:none;border-radius:10px;cursor:pointer;font-size:18px;color:#fff;transition:all .15s;flex-shrink:0;line-height:1}
+#send-btn:hover{background:var(--accent2)}
+#send-btn:disabled{opacity:.38;cursor:not-allowed}
+
+/* ════════════════════════════════════════════
+   KB PANEL OVERLAY
+════════════════════════════════════════════ */
+#kb-overlay{
+  position:fixed;inset:0;z-index:500;
+  display:none;
+  background:rgba(0,0,0,.55);
+  backdrop-filter:blur(2px);
+  align-items:stretch;
+  justify-content:flex-end;
+}
+#kb-overlay.open{display:flex}
+
+#kb-panel{
+  width:min(920px,100%);
+  height:100%;
+  background:var(--surface);
+  display:flex;
+  flex-direction:column;
+  border-left:1px solid var(--border);
+  animation:slideIn .22s ease;
+}
+@keyframes slideIn{from{transform:translateX(100%);opacity:.4}to{transform:translateX(0);opacity:1}}
+
+/* KB Panel Header */
+.kbp-header{
+  padding:14px 18px;
+  border-bottom:1px solid var(--border);
+  display:flex;align-items:center;gap:12px;
+  flex-shrink:0;
+  background:var(--surface);
+}
+.kbp-title{font-size:15px;font-weight:600}
+.kbp-meta{font-size:11px;color:var(--muted);margin-top:1px}
+.kbp-close{margin-left:auto;width:28px;height:28px;border-radius:6px;border:1px solid var(--border);background:none;cursor:pointer;color:var(--muted);font-size:16px;display:flex;align-items:center;justify-content:center;transition:all .15s}
+.kbp-close:hover{border-color:var(--error);color:var(--error)}
+.kbp-save-btn{padding:6px 14px;background:var(--accent);border:none;border-radius:7px;color:#fff;font-size:12px;font-weight:500;cursor:pointer;transition:all .15s;display:flex;align-items:center;gap:5px}
+.kbp-save-btn:hover{background:var(--accent2)}
+.kbp-save-btn:disabled{opacity:.38;cursor:not-allowed}
+.unsaved-dot{width:6px;height:6px;border-radius:50%;background:var(--warn);display:none}
+.unsaved-dot.show{display:block}
+
+/* Tab bar */
+.kbp-tabs{
+  display:flex;align-items:center;gap:2px;
+  padding:8px 14px 0;
+  border-bottom:1px solid var(--border);
+  overflow-x:auto;flex-shrink:0;
+  scrollbar-width:none;
+}
+.kbp-tabs::-webkit-scrollbar{display:none}
+.kbp-tab{
+  padding:6px 14px 8px;
+  font-size:12px;font-weight:500;
+  color:var(--muted);cursor:pointer;
+  border-bottom:2px solid transparent;
+  white-space:nowrap;border-radius:0;
+  transition:all .15s;background:none;border-left:none;border-right:none;border-top:none;
+  position:relative;
+}
+.kbp-tab:hover{color:var(--text)}
+.kbp-tab.active{color:var(--accent);border-bottom-color:var(--accent)}
+.kbp-tab .tab-dot{position:absolute;top:6px;right:6px;width:5px;height:5px;border-radius:50%;background:var(--warn);display:none}
+.kbp-tab.dirty .tab-dot{display:block}
+
+/* Split editor */
+.kbp-body{flex:1;display:flex;overflow:hidden}
+
+.editor-pane{
+  flex:1;display:flex;flex-direction:column;
+  border-right:1px solid var(--border);
+  min-width:0;
+}
+.pane-header{
+  padding:7px 14px;background:var(--surface2);border-bottom:1px solid var(--border);
+  font-size:11px;color:var(--muted2);display:flex;align-items:center;gap:6px;
+  flex-shrink:0;
+}
+.pane-badge{padding:1px 6px;border-radius:4px;background:rgba(108,99,255,.15);color:var(--accent);font-size:10px}
+.edit-area{
+  flex:1;width:100%;background:var(--bg);color:var(--text);
+  border:none;outline:none;padding:16px;
+  font-family:var(--mono);font-size:12px;line-height:1.75;
+  resize:none;overflow-y:auto;tab-size:2;
+}
+
+.preview-pane{
+  flex:1;display:flex;flex-direction:column;
+  min-width:0;overflow:hidden;
+}
+.preview-body{
+  flex:1;overflow-y:auto;padding:20px 24px;
+  font-size:13px;line-height:1.75;
+}
+
+/* Markdown rendered styles */
+.preview-body h1{font-size:20px;font-weight:700;margin:0 0 12px;color:var(--text)}
+.preview-body h2{font-size:16px;font-weight:600;margin:20px 0 10px;color:var(--text);padding-bottom:6px;border-bottom:1px solid var(--border)}
+.preview-body h3{font-size:14px;font-weight:600;margin:14px 0 8px;color:var(--text)}
+.preview-body p{margin:0 0 10px;color:var(--muted)}
+.preview-body strong{color:var(--text);font-weight:600}
+.preview-body ul,.preview-body ol{padding-left:20px;margin:0 0 10px;color:var(--muted)}
+.preview-body li{margin-bottom:3px}
+.preview-body code{font-family:var(--mono);font-size:11px;background:var(--surface2);padding:1px 5px;border-radius:4px;color:var(--info)}
+.preview-body pre{background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:12px;margin:8px 0;overflow-x:auto}
+.preview-body pre code{background:none;padding:0;color:#a9b7c6}
+.preview-body table{width:100%;border-collapse:collapse;margin:8px 0;font-size:12px}
+.preview-body th{background:var(--surface2);padding:7px 10px;text-align:left;color:var(--muted);font-weight:500;border-bottom:1px solid var(--border);white-space:nowrap}
+.preview-body td{padding:7px 10px;border-bottom:1px solid var(--border);color:var(--muted)}
+.preview-body tr:last-child td{border-bottom:none}
+.preview-body blockquote{border-left:3px solid var(--accent);padding:8px 14px;margin:8px 0;background:var(--accent-dim);border-radius:0 6px 6px 0}
+.preview-body blockquote p{color:var(--muted);margin:0}
+.preview-body hr{border:none;border-top:1px solid var(--border);margin:16px 0}
+.preview-body a{color:var(--accent)}
+
+/* KB Footer */
+.kbp-footer{
+  padding:10px 18px;border-top:1px solid var(--border);
+  display:flex;align-items:center;justify-content:space-between;
+  flex-shrink:0;background:var(--surface2);
+}
+.kbp-hint{font-size:11px;color:var(--muted2)}
+.kbp-status{font-size:11px;color:var(--muted)}
+
+/* Scrollbars */
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════ SIDEBAR ═══════════════════ -->
+<div id="sidebar">
+  <div class="logo">
+    <div class="logo-icon">⚡</div>
+    <div>
+      <div class="logo-text">DataPilot</div>
+      <div class="logo-sub">AI analytics</div>
+    </div>
+  </div>
+
+  <div class="source-card">
+    <div class="source-label">Active Source</div>
+    <div class="source-name" id="src-name">No source selected</div>
+    <div id="src-pill" class="source-pill off"><div class="pill-dot"></div><span id="src-status">Disconnected</span></div>
+  </div>
+
+  <nav>
+    <button class="nav-item active" onclick="showView('setup')" id="nav-setup">
+      <span class="nav-icon">🔧</span> Setup
+    </button>
+    <button class="nav-item" onclick="showView('chat')" id="nav-chat">
+      <span class="nav-icon">💬</span> Chat
+    </button>
+    <div class="sidebar-divider"></div>
+    <button class="nav-item" onclick="openKBPanel()" id="nav-kb">
+      <span class="nav-icon">📋</span> Knowledge Base
+      <span class="nav-badge" id="kb-nav-badge" style="display:none">Edit</span>
+    </button>
+  </nav>
+
+  <div class="sidebar-footer">
+    <button class="regen-btn" onclick="triggerRegen()">↻ Regenerate KB</button>
+  </div>
+</div>
+
+<!-- ═══════════════════ MAIN ═══════════════════ -->
+<div id="main">
+
+  <!-- ── Setup View ── -->
+  <div class="view active" id="view-setup">
+    <div class="setup-inner">
+      <div class="setup-title">Connect your data</div>
+      <div class="setup-sub">Upload a file or connect a database, then generate your knowledge base</div>
+
+      <div class="steps">
+        <div class="step active" id="step1"><div class="step-num">1</div> Source</div>
+        <div class="step-line"></div>
+        <div class="step" id="step2"><div class="step-num">2</div> Domain</div>
+        <div class="step-line"></div>
+        <div class="step" id="step3"><div class="step-num">3</div> Generate</div>
+      </div>
+
+      <!-- Step 1 -->
+      <div id="s1">
+        <div class="card">
+          <div class="card-title">Choose source type</div>
+          <div class="src-opts">
+            <div class="src-opt" id="opt-up" onclick="selectSrcType('upload')">
+              <div class="oi">📁</div>
+              <div class="ol">Upload file</div>
+              <div class="os">Excel or CSV</div>
+            </div>
+            <div class="src-opt" id="opt-db" onclick="selectSrcType('db')">
+              <div class="oi">🗄️</div>
+              <div class="ol">Database</div>
+              <div class="os">PostgreSQL / Azure SQL</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card" id="up-card" style="display:none">
+          <div class="card-title">Upload file</div>
+          <div class="upload-zone" id="up-zone"
+            onclick="document.getElementById('fi').click()"
+            ondragover="event.preventDefault();this.classList.add('over')"
+            ondragleave="this.classList.remove('over')"
+            ondrop="onDrop(event)">
+            <input type="file" id="fi" accept=".xlsx,.xls,.csv" onchange="onFileSelect(event)"/>
+            <div style="font-size:28px;margin-bottom:8px">📤</div>
+            <div style="font-size:13px;color:var(--muted)">Click to browse or drag & drop</div>
+            <div style="font-size:11px;color:var(--muted2);margin-top:3px">.xlsx .xls .csv</div>
+          </div>
+          <div id="up-result" style="margin-top:10px;font-size:12px;color:var(--muted);display:none"></div>
+        </div>
+
+        <div class="card" id="db-card" style="display:none">
+          <div class="card-title">Select database</div>
+          <div class="db-list" id="db-list"><div style="color:var(--muted);font-size:13px">Loading...</div></div>
+        </div>
+
+        <div class="actions">
+          <button class="btn btn-primary" id="btn-s1-next" onclick="goStep2()" disabled>Next →</button>
+        </div>
+      </div>
+
+      <!-- Step 2 -->
+      <div id="s2" style="display:none">
+        <div class="card">
+          <div class="card-title">Select your industry</div>
+          <div class="card-sub">Helps the AI understand common business patterns in your data</div>
+          <div class="domain-grid" id="dom-grid"></div>
+        </div>
+        <div class="actions">
+          <button class="btn btn-ghost" onclick="goStep1()">← Back</button>
+          <button class="btn btn-primary" id="btn-gen" onclick="startGen()" disabled>Generate Knowledge Base</button>
+        </div>
+      </div>
+
+      <!-- Step 3 -->
+      <div id="s3" style="display:none">
+        <div class="card">
+          <div class="prog-box" id="prog">
+            <div class="spinner"></div>
+            <div style="font-size:14px;font-weight:600;margin-bottom:5px" id="prog-title">Analysing your data...</div>
+            <div style="font-size:12px;color:var(--muted);max-width:340px;margin:0 auto" id="prog-sub">The AI is reading your tables and building a business knowledge document. This typically takes 30–90 seconds.</div>
+          </div>
+          <div id="gen-done" style="display:none;text-align:center;padding:24px">
+            <div style="font-size:36px;margin-bottom:10px">✅</div>
+            <div style="font-size:15px;font-weight:600;margin-bottom:5px">Knowledge base ready</div>
+            <div style="font-size:12px;color:var(--muted);margin-bottom:18px" id="done-msg"></div>
+            <div style="display:flex;gap:8px;justify-content:center">
+              <button class="btn btn-ghost btn-sm" onclick="openKBPanel()">📋 Review & Edit</button>
+              <button class="btn btn-primary btn-sm" onclick="showView('chat')">Start chatting →</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Chat View ── -->
+  <div class="view" id="view-chat">
+    <div class="top-bar">
+      <span class="top-bar-title">Chat</span>
+      <div class="src-tag" id="chat-src-tag">No source</div>
+      <div class="top-bar-right">
+        <div id="kb-status-tag" style="font-size:11px;color:var(--muted);display:flex;align-items:center;gap:4px">
+          <span class="pill-dot" style="background:var(--warn)"></span> No KB
+        </div>
+
+        <!-- Hamburger menu -->
+        <div class="dropdown-wrap">
+          <button class="menu-btn" onclick="toggleMenu()" id="menu-btn" title="Options">
+            <span></span><span></span><span></span>
+          </button>
+          <div class="dropdown" id="dropdown-menu">
+            <div class="dd-header">Knowledge Base</div>
+            <button class="dd-item" onclick="openKBPanel();closeMenu()">
+              <span class="di">📋</span>
+              <div>
+                <div>Open Knowledge Base</div>
+                <div class="dsub">View, edit &amp; validate your KB</div>
+              </div>
+            </button>
+            <button class="dd-item" onclick="triggerRegen();closeMenu()">
+              <span class="di">↻</span>
+              <div>
+                <div>Regenerate KB</div>
+                <div class="dsub">Re-analyse data with AI</div>
+              </div>
+            </button>
+            <div class="dd-divider"></div>
+            <div class="dd-header">Data Source</div>
+            <button class="dd-item" onclick="showView('setup');closeMenu()">
+              <span class="di">🔧</span>
+              <div>
+                <div>Change Source</div>
+                <div class="dsub">Connect different data</div>
+              </div>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="no-kb-bar" class="no-kb-bar" style="display:none">
+      ⚠️ No knowledge base yet — queries use raw schema only.
+      <button class="btn btn-ghost btn-sm" style="margin-left:auto" onclick="openKBPanel()">Generate KB</button>
+    </div>
+
+    <div id="messages">
+      <div class="welcome-wrap" id="welcome">
+        <h3>Ask anything about your data</h3>
+        <p>The AI uses your knowledge base to understand business terminology</p>
+        <div class="ex-grid" id="ex-grid"></div>
+      </div>
+    </div>
+
+    <div class="chat-footer">
+      <div class="inp-row">
+        <textarea id="chat-input" rows="1"
+          placeholder="Ask a question about your data..."
+          onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendMsg()}"
+          oninput="autoH(this)"></textarea>
+        <button id="send-btn" onclick="sendMsg()">→</button>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /main -->
+
+<!-- ═══════════════════════════════════════════════════
+     KB OVERLAY PANEL
+═══════════════════════════════════════════════════ -->
+<div id="kb-overlay" onclick="onOverlayClick(event)">
+  <div id="kb-panel">
+
+    <!-- Panel header -->
+    <div class="kbp-header">
+      <div>
+        <div class="kbp-title">Knowledge Base</div>
+        <div class="kbp-meta" id="kbp-meta">No source loaded</div>
+      </div>
+      <div class="unsaved-dot" id="unsaved-dot"></div>
+      <button class="kbp-save-btn" onclick="saveKB()" id="kbp-save-btn">
+        <span>Save changes</span>
+      </button>
+      <button class="kbp-close" onclick="closeKBPanel()" title="Close">✕</button>
+    </div>
+
+    <!-- Tab bar -->
+    <div class="kbp-tabs" id="kbp-tabs">
+      <div style="font-size:12px;color:var(--muted);padding:6px 12px 8px">Loading sections...</div>
+    </div>
+
+    <!-- Split editor body -->
+    <div class="kbp-body">
+      <!-- Left: editor -->
+      <div class="editor-pane">
+        <div class="pane-header">
+          <span>✏️ Edit</span>
+          <span class="pane-badge">Markdown</span>
+          <span style="margin-left:auto;font-size:10px;opacity:.5">Edit the content on the left</span>
+        </div>
+        <textarea class="edit-area" id="kbp-editor" spellcheck="false"
+          placeholder="Select a section above to start editing..."
+          oninput="onEditorInput()"></textarea>
+      </div>
+
+      <!-- Right: preview -->
+      <div class="preview-pane">
+        <div class="pane-header">
+          <span>👁 Preview</span>
+          <span class="pane-badge">Rendered</span>
+          <span style="margin-left:auto;font-size:10px;opacity:.5">Live preview</span>
+        </div>
+        <div class="preview-body" id="kbp-preview">
+          <p style="color:var(--muted2)">Select a section to preview it here.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Panel footer -->
+    <div class="kbp-footer">
+      <div class="kbp-hint">Edit the left pane · Preview updates live · Save to apply changes to the AI</div>
+      <div class="kbp-status" id="kbp-status"></div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+// ── State ──────────────────────────────────────────────────────────────────
+const API     = window.location.origin;
+let srcId     = null;
+let srcType   = null;  // 'upload'|'db'
+let domain    = null;
+let chartInst = null;
+let convHist  = [];
+
+// KB state
+let kbFullMd   = '';         // Full markdown from server
+let kbSections = {};         // {sectionKey: md_text}
+let kbOrder    = [];         // section keys in order
+let kbEdits    = {};         // {sectionKey: edited_text}  (dirty tracking)
+let activeTab  = null;
+let saveTimer  = null;
+
+function getSessionId() {
+  let s = sessionStorage.getItem('dp_sid');
+  if (!s) { s = 'w-' + Math.random().toString(36).slice(2) + Date.now().toString(36); sessionStorage.setItem('dp_sid',s); }
+  return s;
+}
+const SID = getSessionId();
+
+const EXAMPLES = [
+  'What was total revenue last month?',
+  'Show top 10 customers by value',
+  'Month-over-month growth rate',
+  'Which products have the highest return rate?',
+];
+
+// ── View navigation ────────────────────────────────────────────────────────
+function showView(name) {
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('view-'+name).classList.add('active');
+  document.getElementById('nav-'+name)?.classList.add('active');
+  if (name==='chat') refreshChatHeader();
+}
+
+// ── Sidebar state ──────────────────────────────────────────────────────────
+function updateSidebar(id, hasKB) {
+  document.getElementById('src-name').textContent = id || 'No source';
+  const pill = document.getElementById('src-pill');
+  const stxt = document.getElementById('src-status');
+  if (id) {
+    pill.className = 'source-pill ' + (hasKB ? '' : 'warn');
+    stxt.textContent = hasKB ? 'KB ready' : 'No knowledge base';
+  } else {
+    pill.className = 'source-pill off';
+    stxt.textContent = 'Disconnected';
+  }
+  const badge = document.getElementById('kb-nav-badge');
+  if (badge) badge.style.display = hasKB ? '' : 'none';
+}
+
+// ── Menu (hamburger) ───────────────────────────────────────────────────────
+function toggleMenu() {
+  const m = document.getElementById('dropdown-menu');
+  m.classList.toggle('open');
+}
+function closeMenu() {
+  document.getElementById('dropdown-menu').classList.remove('open');
+}
+document.addEventListener('click', e => {
+  if (!e.target.closest('.dropdown-wrap')) closeMenu();
+});
+
+// ── Setup: step 1 ──────────────────────────────────────────────────────────
+function selectSrcType(type) {
+  srcType = type;
+  document.getElementById('opt-up').classList.toggle('selected', type==='upload');
+  document.getElementById('opt-db').classList.toggle('selected', type==='db');
+  document.getElementById('up-card').style.display = type==='upload' ? '' : 'none';
+  document.getElementById('db-card').style.display = type==='db' ? '' : 'none';
+  if (type==='db') loadDBList();
+  chk1();
+}
+
+async function loadDBList() {
+  const el = document.getElementById('db-list');
+  try {
+    const r = await fetch(`${API}/sources`);
+    const d = await r.json();
+    const dbs = (d.sources||[]).filter(s=>s.type==='database');
+    if (!dbs.length) { el.innerHTML='<div style="color:var(--muted);font-size:12px">No databases configured. Add credentials to .env and restart.</div>'; return; }
+    el.innerHTML = dbs.map(s=>`
+      <div class="db-row" id="dbr-${s.id}" onclick="selDB('${s.id}','${esc(s.name)}')">
+        <div class="di">🗄️</div>
+        <div><div class="dn">${h(s.name)}</div><div class="dm">${h(s.dialect)}</div></div>
+        ${s.has_kb?'<div class="dkb">KB ready</div>':''}
+      </div>`).join('');
+  } catch(e) { el.innerHTML='<div style="color:var(--error);font-size:12px">Could not reach server</div>'; }
+}
+
+function selDB(id, name) {
+  document.querySelectorAll('.db-row').forEach(e=>e.classList.remove('selected'));
+  document.getElementById('dbr-'+id)?.classList.add('selected');
+  srcId = id;
+  chk1();
+}
+
+function onFileSelect(e) { if(e.target.files[0]) upload(e.target.files[0]); }
+function onDrop(e) { e.preventDefault(); document.getElementById('up-zone').classList.remove('over'); if(e.dataTransfer.files[0]) upload(e.dataTransfer.files[0]); }
+
+async function upload(file) {
+  const zone = document.getElementById('up-zone');
+  const res  = document.getElementById('up-result');
+  zone.innerHTML = '<div style="font-size:28px;margin-bottom:8px">⏳</div><div style="font-size:13px;color:var(--muted)">Uploading...</div>';
+  res.style.display = 'none';
+  const fd = new FormData();
+  fd.append('file', file);
+  try {
+    const r = await fetch(`${API}/api/upload`,{method:'POST',body:fd});
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.detail||'Upload failed');
+    srcId = d.source_id;
+    zone.innerHTML = `<div style="font-size:28px;margin-bottom:8px">✅</div><div style="font-size:13px;color:var(--text)">${h(file.name)}</div><div style="font-size:11px;color:var(--muted);margin-top:4px">${d.tables.length} table(s): ${d.tables.join(', ')}</div>`;
+    res.style.display='block';
+    res.innerHTML = d.has_kb ? '✅ Knowledge base already exists' : `📋 ${d.tables.length} table(s) loaded`;
+    chk1();
+  } catch(err) {
+    zone.innerHTML='<div style="font-size:28px;margin-bottom:8px">📁</div><div style="font-size:13px;color:var(--muted)">Click to browse or drag & drop</div>';
+    res.style.display='block';
+    res.style.color='var(--error)';
+    res.textContent='❌ '+err.message;
+  }
+}
+
+function chk1() { document.getElementById('btn-s1-next').disabled = !srcId; }
+function goStep1() { document.getElementById('s1').style.display=''; document.getElementById('s2').style.display='none'; document.getElementById('s3').style.display='none'; setSt(1); }
+
+// ── Setup: step 2 ──────────────────────────────────────────────────────────
+async function goStep2() {
+  document.getElementById('s1').style.display='none';
+  document.getElementById('s2').style.display='';
+  setSt(2);
+  const r = await fetch(`${API}/api/domains`);
+  const d = await r.json();
+  const grid = document.getElementById('dom-grid');
+  grid.innerHTML = d.domains.map(dom=>`<div class="dom-chip" id="dc-${esc(dom)}" onclick="selDom('${esc(dom)}')">${h(dom)}</div>`).join('');
+}
+
+function selDom(d) {
+  domain = d;
+  document.querySelectorAll('.dom-chip').forEach(e=>e.classList.remove('selected'));
+  document.getElementById('dc-'+esc(d))?.classList.add('selected');
+  document.getElementById('btn-gen').disabled = false;
+}
+
+// ── Setup: step 3 ──────────────────────────────────────────────────────────
+async function startGen() {
+  document.getElementById('s2').style.display='none';
+  document.getElementById('s3').style.display='';
+  setSt(3);
+  const msgs = ['Loading schema...','Analysing tables...','Identifying metrics...','Building vocabulary...','Finalising document...'];
+  let i=0;
+  const t = setInterval(()=>{ i=Math.min(i+1,msgs.length-1); document.getElementById('prog-title').textContent=msgs[i]; }, 14000);
+  try {
+    const r = await fetch(`${API}/api/generate-kb`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({source_id:srcId,domain})});
+    const d = await r.json();
+    clearInterval(t);
+    if (!r.ok) throw new Error(d.detail||'Generation failed');
+    document.getElementById('prog').style.display='none';
+    document.getElementById('gen-done').style.display='';
+    document.getElementById('done-msg').textContent = `Found ${d.concepts_found} business concept(s) in your tables`;
+    updateSidebar(srcId, true);
+  } catch(err) {
+    clearInterval(t);
+    document.getElementById('prog-title').textContent='❌ Failed';
+    document.getElementById('prog-sub').textContent = err.message;
+    document.getElementById('prog-sub').style.color='var(--error)';
+    document.querySelector('.spinner').style.display='none';
+  }
+}
+
+function setSt(n) {
+  [1,2,3].forEach(i=>{
+    const el=document.getElementById('step'+i);
+    el.classList.remove('active','done');
+    if(i<n) el.classList.add('done');
+    else if(i===n) el.classList.add('active');
+  });
+}
+
+function triggerRegen() {
+  if (!srcId) { showView('setup'); return; }
+  document.getElementById('s1').style.display='none';
+  document.getElementById('s2').style.display='';
+  document.getElementById('s3').style.display='none';
+  setSt(2);
+  goStep2();
+  showView('setup');
+}
+
+// ════════════════════════════════════════════
+//  KB PANEL
+// ════════════════════════════════════════════
+
+function openKBPanel() {
+  if (!srcId) { showView('setup'); return; }
+  document.getElementById('kb-overlay').classList.add('open');
+  loadKBPanel();
+  closeMenu();
+}
+
+function closeKBPanel() {
+  if (hasUnsavedChanges()) {
+    if (!confirm('You have unsaved changes. Close without saving?')) return;
+  }
+  document.getElementById('kb-overlay').classList.remove('open');
+  kbEdits = {};
+  activeTab = null;
+}
+
+function onOverlayClick(e) {
+  if (e.target === document.getElementById('kb-overlay')) closeKBPanel();
+}
+
+async function loadKBPanel() {
+  document.getElementById('kbp-tabs').innerHTML = '<div style="font-size:12px;color:var(--muted);padding:6px 12px 8px">Loading...</div>';
+  document.getElementById('kbp-editor').value = '';
+  document.getElementById('kbp-preview').innerHTML = '';
+
+  try {
+    const r = await fetch(`${API}/api/kb/${encodeURIComponent(srcId)}`);
+    if (!r.ok) {
+      document.getElementById('kbp-tabs').innerHTML = '<div style="font-size:12px;color:var(--warn);padding:6px 12px 8px">No knowledge base found — generate one first.</div>';
+      return;
+    }
+    const d = await r.json();
+    kbFullMd = d.markdown;
+    kbEdits  = {};
+
+    if (d.metadata) {
+      document.getElementById('kbp-meta').textContent =
+        `${d.metadata.domain} · ${d.metadata.generated_at} · ${d.metadata.table_count} table(s)`;
+    }
+
+    parseMDIntoSections(kbFullMd);
+    buildTabBar();
+    if (kbOrder.length > 0) selectTab(kbOrder[0]);
+
+  } catch(e) {
+    document.getElementById('kbp-tabs').innerHTML = `<div style="font-size:12px;color:var(--error);padding:6px 12px 8px">Error: ${h(e.message)}</div>`;
+  }
+}
+
+// Parse markdown into named sections
+function parseMDIntoSections(md) {
+  kbSections = {};
+  kbOrder    = [];
+
+  // Split on ## headings
+  const parts = md.split(/(?=^## )/m);
+  // First part is the document header (before first ##)
+  const header = parts[0];
+  if (header.trim()) {
+    kbSections['__header__'] = header;
+    kbOrder.push('__header__');
+  }
+
+  for (let i = 1; i < parts.length; i++) {
+    const chunk = parts[i];
+    const lineEnd = chunk.indexOf('\n');
+    const heading = (lineEnd>=0 ? chunk.slice(0,lineEnd) : chunk).replace(/^##\s*/,'').trim();
+    const key = heading.toLowerCase().replace(/\s+/g,'_').replace(/[^a-z0-9_]/g,'');
+    kbSections[key] = chunk;
+    kbOrder.push(key);
+  }
+}
+
+// Rebuild full markdown from sections + edits
+function rebuildFullMD() {
+  return kbOrder.map(k => kbEdits[k] !== undefined ? kbEdits[k] : kbSections[k]).join('');
+}
+
+function buildTabBar() {
+  const bar = document.getElementById('kbp-tabs');
+  bar.innerHTML = kbOrder.map(key => {
+    let label;
+    if (key === '__header__') { label = '📄 Overview'; }
+    else {
+      const raw = (kbSections[key]||'').split('\n')[0].replace(/^##\s*/,'').trim();
+      // Clean up "Table: tablename" → just the table name
+      label = raw.replace(/^Table:\s*/i,'').replace(/^Business Vocabulary$/i,'📊 Business Vocabulary');
+      if (!label.includes('📊')) label = '🗂 ' + label;
+    }
+    return `<button class="kbp-tab" id="tab-${key}" onclick="selectTab('${key}')">${h(label)}<span class="tab-dot"></span></button>`;
+  }).join('');
+}
+
+function selectTab(key) {
+  activeTab = key;
+  document.querySelectorAll('.kbp-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('tab-'+key)?.classList.add('active');
+
+  const content = kbEdits[key] !== undefined ? kbEdits[key] : (kbSections[key] || '');
+  document.getElementById('kbp-editor').value = content;
+  renderPreview(content);
+}
+
+function onEditorInput() {
+  if (!activeTab) return;
+  const val = document.getElementById('kbp-editor').value;
+  kbEdits[activeTab] = val;
+
+  // Mark tab dirty
+  const tabEl = document.getElementById('tab-'+activeTab);
+  if (tabEl) tabEl.classList.add('dirty');
+
+  // Show unsaved dot
+  document.getElementById('unsaved-dot').classList.add('show');
+
+  // Debounced live preview
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(() => renderPreview(val), 200);
+}
+
+function renderPreview(md) {
+  if (typeof marked === 'undefined') return;
+  try {
+    document.getElementById('kbp-preview').innerHTML = marked.parse(md || '');
+  } catch(e) {}
+}
+
+function hasUnsavedChanges() {
+  return Object.keys(kbEdits).length > 0;
+}
+
+async function saveKB() {
+  if (!srcId) return;
+  const btn    = document.getElementById('kbp-save-btn');
+  const status = document.getElementById('kbp-status');
+  btn.disabled = true;
+  btn.querySelector('span').textContent = 'Saving...';
+
+  const fullMd = rebuildFullMD();
+
+  try {
+    const r = await fetch(`${API}/api/kb/${encodeURIComponent(srcId)}`,{
+      method:'PUT',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({source_id:srcId, markdown:fullMd}),
+    });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.detail);
+
+    // Clear dirty state
+    kbEdits  = {};
+    kbFullMd = fullMd;
+    parseMDIntoSections(kbFullMd);
+    document.querySelectorAll('.kbp-tab').forEach(t=>t.classList.remove('dirty'));
+    document.getElementById('unsaved-dot').classList.remove('show');
+    status.textContent = `✓ Saved — ${d.concepts_found} concepts active`;
+    status.style.color = 'var(--success)';
+    setTimeout(()=>{ status.textContent=''; }, 3500);
+
+  } catch(err) {
+    status.textContent = '❌ ' + err.message;
+    status.style.color = 'var(--error)';
+  } finally {
+    btn.disabled = false;
+    btn.querySelector('span').textContent = 'Save changes';
+  }
+}
+
+// ── Chat ────────────────────────────────────────────────────────────────────
+async function refreshChatHeader() {
+  document.getElementById('chat-src-tag').textContent = srcId || 'No source';
+  if (!srcId) { document.getElementById('no-kb-bar').style.display=''; return; }
+  try {
+    const r = await fetch(`${API}/api/kb/${encodeURIComponent(srcId)}/status`);
+    const d = await r.json();
+    const tag = document.getElementById('kb-status-tag');
+    if (d.exists) {
+      tag.innerHTML='<span class="pill-dot" style="background:var(--success)"></span> KB active';
+      tag.style.color='var(--success)';
+      document.getElementById('no-kb-bar').style.display='none';
+    } else {
+      tag.innerHTML='<span class="pill-dot" style="background:var(--warn)"></span> No KB';
+      tag.style.color='var(--warn)';
+      document.getElementById('no-kb-bar').style.display='';
+    }
+  } catch(e) {}
+}
+
+async function sendMsg() {
+  const inp = document.getElementById('chat-input');
+  const q   = inp.value.trim();
+  if (!q) return;
+  if (!srcId) { showView('setup'); return; }
+  inp.value='';
+  inp.style.height='auto';
+  document.getElementById('send-btn').disabled=true;
+  document.getElementById('welcome')?.remove();
+
+  addUserMsg(q);
+  addLoading();
+
+  try {
+    const r = await fetch(`${API}/api/ask`,{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({question:q, source_id:srcId, session_id:SID, conversation_history:convHist.slice(-6)}),
+    });
+    removeLoading();
+    const d = await r.json();
+    if (!r.ok) { addAssistMsg({answer:'❌ '+(d.detail||'Error'),sql:'',data:null}); return; }
+    addAssistMsg(d);
+    convHist.push({role:'user',content:q},{role:'assistant',content:d.answer});
+  } catch(err) {
+    removeLoading();
+    addAssistMsg({answer:'❌ Network error: '+err.message,sql:'',data:null});
+  } finally {
+    document.getElementById('send-btn').disabled=false;
+  }
+}
+
+function addUserMsg(text) {
+  const el=document.createElement('div');
+  el.className='msg user';
+  el.innerHTML=`<div class="bubble">${h(text)}</div>`;
+  document.getElementById('messages').appendChild(el);
+  scrollBot();
+}
+
+function addLoading() {
+  const el=document.createElement('div');
+  el.className='msg assistant'; el.id='loading';
+  el.innerHTML='<div class="loading-row"><div class="dots"><span></span><span></span><span></span></div><span style="font-size:12px;color:var(--muted)">Thinking...</span></div>';
+  document.getElementById('messages').appendChild(el);
+  scrollBot();
+}
+
+function removeLoading() { document.getElementById('loading')?.remove(); }
+
+function addAssistMsg(data) {
+  const el=document.createElement('div');
+  el.className='msg assistant';
+  let html='<div class="bubble">';
+  html+=`<div class="ans-text">${renderAns(data.answer)}</div>`;
+
+  if (data.sql) {
+    html+=`<div class="sql-blk"><div class="sql-hdr"><span>SQL</span><span>${data.execution_time_ms||0}ms</span></div><div class="sql-body">${h(data.sql)}</div></div>`;
+  }
+
+  if (data.data?.rows?.length) {
+    if (data.chart_type==='number'&&data.data.columns.length===1) {
+      const v=data.data.rows[0][data.data.columns[0]];
+      html+=`<div class="num-card"><div class="num-val">${h(String(v))}</div><div class="num-lbl">${h(data.data.columns[0])}</div></div>`;
+    } else if (['bar','line'].includes(data.chart_type)&&data.data.columns.length>=2) {
+      const cid='c'+Date.now();
+      html+=`<div class="chart-wrap"><canvas id="${cid}"></canvas></div>`;
+    } else {
+      html+=renderTbl(data.data.columns, data.data.rows.slice(0,50));
+    }
+  }
+
+  if (data.data?.row_count!==undefined) {
+    html+=`<div class="meta-row"><span class="mtag ${data.data.row_count>0?'ok':''}">${data.data.row_count} row(s)</span></div>`;
+  }
+
+  if (data.follow_ups?.length) {
+    html+=`<div class="fups">${data.follow_ups.map(q=>`<button class="fup-btn" onclick="setInp('${esc(q)}')">${h(q)}</button>`).join('')}</div>`;
+  }
+
+  html+='</div>';
+  el.innerHTML=html;
+  document.getElementById('messages').appendChild(el);
+
+  if (['bar','line'].includes(data.chart_type)&&data.data?.columns?.length>=2) {
+    const cid=el.querySelector('canvas')?.id;
+    if (cid) drawChart(cid, data.chart_type, data.data);
+  }
+  scrollBot();
+}
+
+function renderAns(t) {
+  if(!t) return '';
+  return h(t).replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>');
+}
+
+function renderTbl(cols, rows) {
+  if(!cols||!rows) return '';
+  let s='<div class="tbl-wrap"><table class="dtbl"><thead><tr>';
+  cols.forEach(c=>{ s+=`<th>${h(String(c))}</th>`; });
+  s+='</tr></thead><tbody>';
+  rows.forEach(row=>{ s+='<tr>'; cols.forEach(c=>{ s+=`<td>${h(String(row[c]??''))}</td>`; }); s+='</tr>'; });
+  s+='</tbody></table></div>';
+  return s;
+}
+
+function drawChart(id, type, data) {
+  const canvas=document.getElementById(id);
+  if(!canvas) return;
+  const labels=data.rows.map(r=>String(r[data.columns[0]]??''));
+  const vals=data.rows.map(r=>parseFloat(r[data.columns[1]])||0);
+  if(chartInst) chartInst.destroy();
+  chartInst=new Chart(canvas,{
+    type,
+    data:{labels,datasets:[{label:data.columns[1],data:vals,backgroundColor:'rgba(108,99,255,.55)',borderColor:'rgba(108,99,255,1)',borderWidth:2,tension:.3,fill:type==='line'}]},
+    options:{responsive:true,plugins:{legend:{display:false}},scales:{x:{ticks:{color:'#8b8fa8',font:{size:10}},grid:{color:'rgba(255,255,255,.04)'}},y:{ticks:{color:'#8b8fa8',font:{size:10}},grid:{color:'rgba(255,255,255,.04)'}}}},
+  });
+}
+
+function setInp(t) { document.getElementById('chat-input').value=t; document.getElementById('chat-input').focus(); }
+function autoH(el) { el.style.height='auto'; el.style.height=Math.min(el.scrollHeight,100)+'px'; }
+function scrollBot() { const m=document.getElementById('messages'); m.scrollTop=m.scrollHeight; }
+
+// ── Utilities ──────────────────────────────────────────────────────────────
+function h(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function esc(s) { return String(s).replace(/'/g,"\\'").replace(/"/g,'&quot;'); }
+
+// ── Init ───────────────────────────────────────────────────────────────────
+async function init() {
+  const grid=document.getElementById('ex-grid');
+  if (grid) EXAMPLES.forEach(q=>{ const b=document.createElement('button'); b.className='ex-chip'; b.textContent=q; b.onclick=()=>{ setInp(q); showView('chat'); }; grid.appendChild(b); });
+
+  try {
+    const r=await fetch(`${API}/api/health`);
+    const d=await r.json();
+    if (d.source_id) {
+      srcId=d.source_id;
+      updateSidebar(d.source_id, d.has_kb);
+      if (d.has_kb) { showView('chat'); refreshChatHeader(); }
+    }
+  } catch(e) {}
+}
+
+init();
+</script>
+</body>
+</html>

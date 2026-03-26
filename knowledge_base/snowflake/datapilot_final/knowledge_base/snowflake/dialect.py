@@ -153,9 +153,10 @@ def build_system_prompt(
     conversation_block: str = "",
 ) -> str:
     """
-    Builds the complete system prompt for Snowflake SQL generation.
-    Optional blocks are injected between dialect rules and the schema.
+    Builds the complete Snowflake SQL generation prompt.
+    The EXACT COLUMN REGISTRY is injected first as sole source of truth.
     """
+    from knowledge_base.schema_enforcement import SQL_GENERATION_RULES
     extra = ""
     if conversation_block:
         extra += f"\n{conversation_block}\n"
@@ -167,18 +168,13 @@ def build_system_prompt(
     return f"""You are a Snowflake SQL expert.
 Your ONLY job is to write a single, correct, read-only SELECT statement that answers the user's question.
 
-ABSOLUTE RULES — violating any of these makes your answer wrong:
-1. Write ONLY valid Snowflake SQL syntax. Never use T-SQL or PostgreSQL-exclusive constructs.
-2. Write ONLY a SELECT statement. Never write INSERT, UPDATE, DELETE, DROP, CREATE, ALTER, MERGE.
-3. Use ONLY table and column names that appear in the SCHEMA section below.
-4. Use UPPER_CASE for all table and column names (Snowflake default).
-5. Always qualify column names with table aliases when using JOINs.
-6. Return ONLY the SQL statement — no explanation, no markdown, no ```, no comments.
-7. End the statement with a semicolon.
-8. Use LIMIT for row caps, not TOP or FETCH NEXT.
-9. When filtering window functions, use the QUALIFY clause instead of subqueries.
-10. When BUSINESS DEFINITIONS are provided, follow them EXACTLY — do not substitute
-    different tables, filters, or column names.
+{schema_context_str}
+
+{SQL_GENERATION_RULES}
+Rule 11: Write ONLY valid Snowflake SQL syntax. Never use T-SQL or PostgreSQL-exclusive constructs.
+Rule 12: Use UPPER_CASE for all table and column names (Snowflake default).
+Rule 13: Use LIMIT for row caps, not TOP or FETCH NEXT.
+Rule 14: When filtering window functions, use the QUALIFY clause instead of subqueries.
 
 {DATE_TIME_FUNCTIONS}
 {STRING_FUNCTIONS}
@@ -190,41 +186,12 @@ ABSOLUTE RULES — violating any of these makes your answer wrong:
 {SNOWFLAKE_SPECIFIC}
 {FORBIDDEN_PATTERNS}
 {extra}
-=== SCHEMA ===
-{schema_context_str}
-
 Now write the SQL:"""
 
 
 def build_schema_context_string(schema_context) -> str:
-    lines: list[str] = [
-        f"DATABASE: {schema_context.database}",
-        f"SCHEMA:   {schema_context.default_schema}",
-        f"DIALECT:  Snowflake",
-        "",
-    ]
-
-    for table in schema_context.tables:
-        est = f" (~{table.row_count_estimate:,} rows)" if table.row_count_estimate else ""
-        lines.append(f"TABLE: {table.schema}.{table.name}{est}")
-        for col in table.columns:
-            flags = []
-            if col.is_primary_key: flags.append("PK")
-            if col.is_foreign_key: flags.append(f"FK→{col.references}")
-            if not col.nullable:   flags.append("NOT NULL")
-            flag_str = f"  [{', '.join(flags)}]" if flags else ""
-            sample = ""
-            if col.sample_values:
-                vals   = [repr(v) for v in col.sample_values[:6]]
-                sample = f"  e.g. {', '.join(vals)}"
-            desc = f"  // {col.description}" if col.description else ""
-            lines.append(f"  {col.name}  {col.raw_type}{flag_str}{sample}{desc}")
-
-        rels = schema_context.relationships.get(table.name, [])
-        if rels:
-            lines.append("  JOINS:")
-            for fk_col, ref_tbl, ref_col in rels:
-                lines.append(f"    {table.name}.{fk_col} → {ref_tbl}.{ref_col}")
-        lines.append("")
-
-    return "\n".join(lines)
+    """
+    Returns the EXACT COLUMN REGISTRY + detailed schema block for Snowflake.
+    """
+    from knowledge_base.schema_enforcement import build_full_schema_context
+    return build_full_schema_context(schema_context, "Snowflake")
